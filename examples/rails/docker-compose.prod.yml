@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database (for Rails production)
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_DB=rails_prod
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Your Rails application (production)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    ports:
+      - "8081:8081"
+    environment:
+      - RAILS_ENV=production
+      - DATABASE_URL=postgresql://postgres:${DATABASE_PASSWORD}@db:5432/rails_prod
+      - RAILS_MASTER_KEY=${RAILS_MASTER_KEY}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - RAILS_LOG_TO_STDOUT=true
+      - RAILS_SERVE_STATIC_FILES=true
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Superpilot sidecar for observability (production mode)
+  superpilot:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    command: ["/app/superpilot-prod"]
+    environment:
+      - LISTEN_ADDR=0.0.0.0:8080
+      - TARGET_ADDR=app:8081
+      - PROXY_MODE=http
+    ports:
+      - "8080:8080"   # Application traffic (proxied)
+      - "9090:9090"   # Metrics endpoint
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

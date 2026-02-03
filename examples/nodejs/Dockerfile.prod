@@ -1,0 +1,30 @@
+# Node.js Production Dockerfile with Superpilot Sidecar
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install production dependencies only
+RUN apk add --no-cache ca-certificates
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+# Copy application code
+COPY . .
+
+# Create non-root user
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
+
+# Expose application port and superpilot metrics port
+EXPOSE 8081 9090
+
+# Run the application
+CMD ["node", "index.js"]

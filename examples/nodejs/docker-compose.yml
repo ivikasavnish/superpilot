@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Your Node.js application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8081:8081"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=8081
+    networks:
+      - app-network
+
+  # Superpilot sidecar for observability
+  superpilot:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    environment:
+      - LISTEN_ADDR=0.0.0.0:8080
+      - TARGET_ADDR=app:8081
+      - PROXY_MODE=http
+    ports:
+      - "8080:8080"   # Application traffic (proxied)
+      - "9090:9090"   # Metrics endpoint
+    depends_on:
+      - app
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,22 @@
+# Golang Development Dockerfile with Superpilot Sidecar
+FROM golang:1.21-alpine
+
+WORKDIR /app
+
+# Install development dependencies
+RUN apk add --no-cache git curl
+
+# Copy go mod files (if they exist)
+COPY go.* ./
+
+# Download dependencies
+RUN if [ -f go.mod ]; then go mod download; fi
+
+# Copy application code
+COPY . .
+
+# Expose application port and superpilot metrics port
+EXPOSE 8081 9090
+
+# Development mode with hot reload
+CMD ["go", "run", "main.go"]
