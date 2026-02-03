@@ -1,1 +1,10 @@
 /target
+*.swp
+*.swo
+*~
+.DS_Store
+*.log
+/recordings
+.vscode/
+.idea/
+*.iml
