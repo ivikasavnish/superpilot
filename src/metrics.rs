@@ -1,12 +1,14 @@
 use prometheus::{
     Histogram, HistogramVec, IntCounter, IntCounterVec,
-    IntGauge, Opts, Registry,
+    IntGauge, Opts, Registry, Encoder,
 };
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Metrics collector for observability
 pub struct Metrics {
     pub registry: Registry,
+    pub push_enabled: AtomicBool,
     
     // TCP metrics
     pub tcp_connections_total: IntCounter,
@@ -242,6 +244,7 @@ impl Metrics {
         
         Ok(Arc::new(Metrics {
             registry,
+            push_enabled: AtomicBool::new(true),
             tcp_connections_total,
             tcp_bytes_sent,
             tcp_bytes_received,
@@ -275,5 +278,79 @@ impl Metrics {
             safety_sampled_out,
             memory_usage_bytes,
         }))
+    }
+    
+    /// Push metrics to Prometheus Pushgateway
+    /// Returns Ok(()) on success, Err on failure
+    pub fn push_to_prometheus(
+        &self,
+        gateway_url: &str,
+        job_name: &str,
+        instance: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        // Check if push is still enabled
+        if !self.push_enabled.load(Ordering::Relaxed) {
+            return Err("Push to Prometheus is disabled".into());
+        }
+        
+        // Gather metrics
+        let metric_families = self.registry.gather();
+        let encoder = prometheus::TextEncoder::new();
+        let mut buffer = Vec::new();
+        encoder.encode(&metric_families, &mut buffer)?;
+        
+        // Build push URL
+        let url = format!("{}/metrics/job/{}/instance/{}", gateway_url, job_name, instance);
+        
+        // Push to gateway using HTTP PUT
+        let response = ureq::put(&url)
+            .set("Content-Type", "text/plain; version=0.0.4")
+            .send_bytes(&buffer)?;
+        
+        if response.status() >= 200 && response.status() < 300 {
+            Ok(())
+        } else {
+            Err(format!("Prometheus push failed with status: {}", response.status()).into())
+        }
+    }
+    
+    /// Disable push functionality
+    pub fn disable_push(&self) {
+        self.push_enabled.store(false, Ordering::Relaxed);
+    }
+    
+    /// Check if push is enabled
+    pub fn is_push_enabled(&self) -> bool {
+        self.push_enabled.load(Ordering::Relaxed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_metrics_push_enable_disable() {
+        let metrics = Metrics::new().unwrap();
+        
+        // Push should be enabled by default
+        assert!(metrics.is_push_enabled());
+        
+        // Disable push
+        metrics.disable_push();
+        assert!(!metrics.is_push_enabled());
+        
+        // Push should fail when disabled
+        let result = metrics.push_to_prometheus("http://example.com", "test", "test");
+        assert!(result.is_err());
+    }
+    
+    #[test]
+    fn test_metrics_push_with_invalid_url() {
+        let metrics = Metrics::new().unwrap();
+        
+        // Push should fail with invalid URL
+        let result = metrics.push_to_prometheus("http://invalid-host-12345.test", "test", "test");
+        assert!(result.is_err());
     }
 }

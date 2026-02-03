@@ -150,6 +150,8 @@ spec:
 
 ## Prometheus Scraping Configuration
 
+### Pull Model (Standard)
+
 ```yaml
 scrape_configs:
   - job_name: 'superpilot'
@@ -158,6 +160,42 @@ scrape_configs:
     metrics_path: /metrics
     scrape_interval: 15s
 ```
+
+### Push Model (with Pushgateway)
+
+For environments where pull-based metrics collection is not feasible (e.g., short-lived jobs, NAT/firewall restrictions):
+
+**1. Deploy Prometheus Pushgateway:**
+
+```bash
+docker run -d -p 9091:9091 prom/pushgateway
+```
+
+**2. Configure Superpilot to push metrics:**
+
+```yaml
+# config.yaml
+prometheus:
+  push_gateway_url: "http://pushgateway:9091"
+  push_interval_secs: 30
+  job_name: "superpilot"
+  instance: "production-1"
+```
+
+**3. Configure Prometheus to scrape Pushgateway:**
+
+```yaml
+scrape_configs:
+  - job_name: 'pushgateway'
+    honor_labels: true
+    static_configs:
+    - targets: ['pushgateway:9091']
+```
+
+**Notes:**
+- Superpilot will automatically disable push after 5 consecutive failures
+- Metrics remain available via pull endpoint even if push fails
+- If push gateway URL is not configured, only pull endpoint is used
 
 ## Performance Testing
 

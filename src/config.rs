@@ -14,6 +14,8 @@ pub struct Config {
     #[cfg(feature = "recorder")]
     pub recorder: RecorderConfig,
     pub safety: SafetyConfig,
+    #[serde(default)]
+    pub prometheus: PrometheusConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,6 +73,25 @@ pub struct SafetyConfig {
     pub sampling_rate: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrometheusConfig {
+    pub push_gateway_url: Option<String>,
+    pub push_interval_secs: u64,
+    pub job_name: String,
+    pub instance: String,
+}
+
+impl Default for PrometheusConfig {
+    fn default() -> Self {
+        PrometheusConfig {
+            push_gateway_url: None,
+            push_interval_secs: 60,
+            job_name: "superpilot".to_string(),
+            instance: "localhost".to_string(),
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
@@ -106,6 +127,7 @@ impl Default for Config {
                 rate_limit_requests_per_sec: 10000,
                 sampling_rate: 1.0,
             },
+            prometheus: PrometheusConfig::default(),
         }
     }
 }

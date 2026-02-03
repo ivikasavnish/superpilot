@@ -60,6 +60,22 @@ fn main() {
         start_metrics_server(metrics_clone, metrics_addr);
     });
 
+    // Start Prometheus push gateway thread if configured
+    if let Some(ref push_gateway_url) = config.prometheus.push_gateway_url {
+        println!("Prometheus push gateway: {}", push_gateway_url);
+        println!("  Push interval: {} seconds", config.prometheus.push_interval_secs);
+        println!("  Job name: {}", config.prometheus.job_name);
+        println!("  Instance: {}", config.prometheus.instance);
+        
+        let metrics_clone = Arc::clone(&metrics);
+        let push_config = config.prometheus.clone();
+        thread::spawn(move || {
+            start_prometheus_push(metrics_clone, push_config);
+        });
+    } else {
+        println!("Prometheus push gateway not configured - metrics will only be available via pull endpoint");
+    }
+
     // Start proxy based on mode
     match config.mode {
         ProxyMode::Tcp => {
@@ -101,6 +117,52 @@ fn main() {
             }
         }
     }
+}
+
+fn start_prometheus_push(metrics: Arc<Metrics>, config: config::PrometheusConfig) {
+    use std::time::Duration;
+    
+    let gateway_url = config.push_gateway_url.as_ref().unwrap();
+    let interval = Duration::from_secs(config.push_interval_secs);
+    let mut consecutive_failures = 0;
+    const MAX_FAILURES: u32 = 5;
+    
+    println!("Prometheus push thread started");
+    
+    loop {
+        // Check if push is still enabled
+        if !metrics.is_push_enabled() {
+            eprintln!("Prometheus push has been disabled due to repeated failures");
+            break;
+        }
+        
+        // Wait for the configured interval
+        std::thread::sleep(interval);
+        
+        // Attempt to push metrics
+        match metrics.push_to_prometheus(gateway_url, &config.job_name, &config.instance) {
+            Ok(()) => {
+                // Reset failure counter on success
+                consecutive_failures = 0;
+            }
+            Err(e) => {
+                eprintln!("Failed to push metrics to Prometheus: {}", e);
+                consecutive_failures += 1;
+                
+                // Disable push after too many consecutive failures
+                if consecutive_failures >= MAX_FAILURES {
+                    eprintln!(
+                        "Disabling Prometheus push after {} consecutive failures",
+                        MAX_FAILURES
+                    );
+                    metrics.disable_push();
+                    break;
+                }
+            }
+        }
+    }
+    
+    println!("Prometheus push thread stopped");
 }
 
 fn start_metrics_server(metrics: Arc<Metrics>, addr: std::net::SocketAddr) {

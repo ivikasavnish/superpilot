@@ -68,6 +68,28 @@ See `config.yaml` for example configuration.
 
 Access Prometheus metrics at `http://localhost:9090/metrics`
 
+### Prometheus Push Gateway (Optional)
+
+Superpilot supports pushing metrics to a Prometheus Pushgateway for environments where the pull model is not suitable.
+
+Configure the push gateway in your `config.yaml`:
+
+```yaml
+prometheus:
+  push_gateway_url: "http://pushgateway:9091"
+  push_interval_secs: 60
+  job_name: "superpilot"
+  instance: "localhost"
+```
+
+If `push_gateway_url` is not configured, Superpilot will log a message and metrics will only be available via the pull endpoint.
+
+**Safety Features:**
+- If the push gateway is unreachable or returns errors, Superpilot will log the failure
+- After 5 consecutive failures, the push feature will be automatically disabled
+- The proxy continues to function normally even if push fails
+- Metrics are always available via the pull endpoint regardless of push status
+
 ### Key Metrics
 
 - `tcp_connections_total`: Total TCP connections
