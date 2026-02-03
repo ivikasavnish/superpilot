@@ -1,0 +1,30 @@
+listen_addr: "0.0.0.0:8080"
+target_addr: "127.0.0.1:8081"
+mode: tcp
+metrics_addr: "0.0.0.0:9090"
+
+tcp:
+  buffer_size: 8192
+  connection_timeout_secs: 300
+
+udp:
+  buffer_size: 65536
+  max_packet_size: 65507
+
+http:
+  max_header_size: 8192
+  max_body_size: 1048576
+
+safety:
+  max_memory_mb: 256
+  max_latency_ms: 100
+  rate_limit_requests_per_sec: 10000
+  sampling_rate: 1.0
+
+# Prometheus push gateway configuration (optional)
+# If not configured, metrics will only be available via pull endpoint
+prometheus:
+  # push_gateway_url: "http://localhost:9091"  # Uncomment to enable push
+  push_interval_secs: 60
+  job_name: "superpilot"
+  instance: "localhost"

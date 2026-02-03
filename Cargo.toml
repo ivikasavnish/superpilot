@@ -1,0 +1,28 @@
+[package]
+name = "superpilot"
+version = "0.1.0"
+edition = "2021"
+authors = ["Superpilot Team"]
+description = "Production-safe, low-latency Docker sidecar for black-box observability"
+
+[features]
+default = ["prod"]
+prod = []
+recorder = []
+
+[dependencies]
+# Minimal dependencies for production safety
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+prometheus = { version = "0.13", default-features = false }
+# HTTP client for Prometheus push gateway
+ureq = { version = "2.10", default-features = false }
+# TLS for MITM (recorder only)
+rcgen = { version = "0.13", optional = true }
+rustls = { version = "0.23", optional = true }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
