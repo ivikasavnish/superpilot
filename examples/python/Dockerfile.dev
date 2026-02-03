@@ -19,8 +19,8 @@ RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.
 # Copy application code
 COPY . .
 
-# Expose application port and superpilot metrics port
-EXPOSE 8081 9090
+# Expose application port
+EXPOSE 8081
 
 # Development mode
 CMD ["python", "-u", "app.py"]

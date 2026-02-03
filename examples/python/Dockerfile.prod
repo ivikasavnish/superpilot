@@ -24,8 +24,8 @@ RUN useradd -m -u 1000 appuser && \
 
 USER appuser
 
-# Expose application port and superpilot metrics port
-EXPOSE 8081 9090
+# Expose application port
+EXPOSE 8081
 
 # Run the application
 CMD ["python", "-u", "app.py"]

@@ -26,8 +26,8 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /build/app .
 
-# Expose application port and superpilot metrics port
-EXPOSE 8081 9090
+# Expose application port
+EXPOSE 8081
 
 # Run the application
 CMD ["./app"]
