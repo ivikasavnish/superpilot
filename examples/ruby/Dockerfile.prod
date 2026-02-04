@@ -1,0 +1,35 @@
+# Ruby Production Dockerfile with Superpilot Sidecar
+FROM ruby:3.2-alpine
+
+WORKDIR /app
+
+# Install production dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    postgresql-dev \
+    tzdata
+
+# Copy Gemfile
+COPY Gemfile* ./
+
+# Install gems (production only)
+RUN bundle config set --local deployment 'true' && \
+    bundle config set --local without 'development test' && \
+    bundle install && \
+    bundle clean --force
+
+# Copy application code
+COPY . .
+
+# Create non-root user
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
+
+# Expose application port
+EXPOSE 8081
+
+# Run the application
+CMD ["ruby", "app.rb"]

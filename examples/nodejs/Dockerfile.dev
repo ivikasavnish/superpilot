@@ -1,0 +1,22 @@
+# Node.js Development Dockerfile with Superpilot Sidecar
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install development dependencies
+RUN apk add --no-cache curl
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy application code
+COPY . .
+
+# Expose application port
+EXPOSE 8081
+
+# Development mode with nodemon for hot reload
+CMD ["npm", "run", "dev"]

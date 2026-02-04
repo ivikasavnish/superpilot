@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Your Golang application (production)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    ports:
+      - "8081:8081"
+    environment:
+      - GO_ENV=production
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Superpilot sidecar for observability (production mode)
+  superpilot:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    command: ["/app/superpilot-prod"]
+    environment:
+      - LISTEN_ADDR=0.0.0.0:8080
+      - TARGET_ADDR=app:8081
+      - PROXY_MODE=http
+    ports:
+      - "8080:8080"   # Application traffic (proxied)
+      - "9090:9090"   # Metrics endpoint
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

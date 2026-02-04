@@ -1,0 +1,26 @@
+# Python Development Dockerfile with Superpilot Sidecar
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install development dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc \
+    curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy requirements file
+COPY requirements.txt* ./
+
+# Install Python dependencies
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+
+# Copy application code
+COPY . .
+
+# Expose application port
+EXPOSE 8081
+
+# Development mode
+CMD ["python", "-u", "app.py"]

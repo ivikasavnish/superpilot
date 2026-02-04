@@ -1,0 +1,27 @@
+# Ruby Development Dockerfile with Superpilot Sidecar
+FROM ruby:3.2-alpine
+
+WORKDIR /app
+
+# Install development dependencies
+RUN apk add --no-cache \
+    build-base \
+    curl \
+    git \
+    postgresql-dev \
+    tzdata
+
+# Copy Gemfile
+COPY Gemfile* ./
+
+# Install gems
+RUN if [ -f Gemfile ]; then bundle install; fi
+
+# Copy application code
+COPY . .
+
+# Expose application port
+EXPOSE 8081
+
+# Development mode
+CMD ["ruby", "app.rb"]
